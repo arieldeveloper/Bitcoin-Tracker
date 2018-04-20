@@ -3,11 +3,12 @@
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.figure import Figure
+#from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from matplotlib import style
 from matplotlib import pyplot as plt
-
+import matplotlib.dates as mdates
+import matplotlib.ticker as mticker
 
 import urllib
 import json
@@ -26,8 +27,8 @@ SMALL_FONT = ("Verdana", 12)
 
 #Styling the Graph
 style.use("ggplot")
-f = Figure()
-a = f.add_subplot(111)
+f = plt.figure()
+#a = f.add_subplot(111)
 
 #Default values
 exchange = "BTC-e"
@@ -35,16 +36,64 @@ counter = 9000
 programName = "btce"
 resampleSize = "15Min"
 
-dataPace = "1d"
+dataPace = "tick"
 candleWidth = 0.008
 
+paneCount = 1
 topIndicator = "none"
 bottomIndicator = "none"
 middleIndicators = "none"
 EMAs = []
 SMAs = []
 
+darkColour = "#183A54"
+lightColour = "#00A3E0"
+
 chartLoad = True
+
+
+def tutorial():
+    def leave(what):
+        what.destroy()
+
+    def page2():
+        #Destroys the first window then starts second window
+        tut.destroy()
+        tut2 = tk.Tk()
+
+        def page3():
+            #Destroys the second window
+            tut2.destroy()
+            #Creates the third window
+            tut3 = tk.Tk()
+            tut3.wm_title("part 3")
+            label = ttk.Label(tut3, text = "Part 3", font = NORM_FONT)
+            label.pack(side = "top", fill = "x", pady = 10)
+            B1 = ttk.Button(tut3, text = "done", command = tut3.destroy)
+            B1.pack()
+            tut3.mainloop()
+
+
+        tut2 = tk.Tk()
+        tut2.wm_title("part 2")
+        label = ttk.Label(tut2, text = "Part 2", font = NORM_FONT)
+        label.pack(side = "top", fill = "x", pady = 10)
+        B1 = ttk.Button(tut2, text = "Next", command = page3)
+        B1.pack()
+        tut2.mainloop()
+
+    tut = tk.Tk()
+    tut.wm_title("Tutorial")
+    label = ttk.Label(tut, text = "what do you need help with? ", font = NORM_FONT)
+    label.pack(side = "top", fill = "x", pady=10)
+
+    B1 = ttk.Button(tut, text = "Overview of the application", command = page2)
+    B1.pack()
+    B2 = ttk.Button(tut, text = "How do I trade with this client", command = lambda: popupmsg("Not yet supported"))
+    B2.pack()
+    B3 = ttk.Button(tut, text = "Indicator Questions/help", command = lambda: popupmsg("Not yet supported"))
+    B3.pack()
+    tut.mainloop()
 
 def loadChart(action):
     global chartLoad
@@ -54,9 +103,6 @@ def loadChart(action):
 
     if action == "stop":
         chartLoad = False
-
-def tutorial():
-    pass
 
 def addMiddleIndicator(what):
     global middleIndicators
@@ -322,33 +368,170 @@ def popupmsg(msg):
 
 #Creates live graph
 def animate(i):
-    dataLink = 'https://wex.nz/api/3/trades/btc_usd?limit=2000'
-    data = urllib.request.urlopen(dataLink)
+    global refreshRate
+    global counter
 
-    data = data.read().decode("utf-8")
+    if chartLoad:
+        if paneCount == 1:
+            if dataPace == "tick":
+                try:
+                    if exchange == "BTC-e":
+                        a = plt.subplot2grid((6,4), (0,0), rowspan = 5, colspan = 4)
+                        a2 = plt.subplot2grid((6,4), (5,0), rowspan = 1, colspan = 4, sharex = a)
 
-    data = json.loads(data)
-    #Takes all all the data under 'btc_usd' in the api
-    data = data["btc_usd"]
+                        dataLink = 'https://wex.nz/api/3/trades/btc_usd?limit=2000'
+                        data = urllib.request.urlopen(dataLink)
+                        data = data.read().decode("utf-8")
+                        data = json.loads(data)
 
-    #Makes data a panda dataset
-    data = pd.DataFrame(data)
+                        #Takes all the data under 'btc_usd' in the api
+                        data = data["btc_usd"]
 
-    buys = data[(data['type'] == 'bid')]
-    buys["datestamp"] = np.array(buys["timestamp"]).astype("datetime64[s]")
-    buyDates = (buys["datestamp"]).tolist()
+                        #Makes data a panda dataset
+                        data = pd.DataFrame(data)
 
-    sells = data[(data['type'] == 'ask')]
-    sells["datestamp"] = np.array(sells["timestamp"]).astype("datetime64[s]")
-    sellDates = (sells["datestamp"]).tolist()
+                        data["datestamp"] = np.array(data["timestamp"]).astype("datetime64[s]")
+                        allDates = data["datestamp"].tolist()
 
-    a.clear()
-    a.plot_date(buyDates, buys["price"], "#00A3E0", label = "buys")
-    a.plot_date(sellDates, sells["price"], "#183A54", label = "sells")
+                        buys = data[(data['type'] == 'bid')]
+                        #buys["datestamp"] = np.array(buys["timestamp"]).astype("datetime64[s]")
+                        buyDates = (buys["datestamp"]).tolist()
 
-    a.legend(bbox_to_anchor = (0, 1.02, 1, .102), loc = 3, ncol =2, borderaxespad = 0)
-    a.set_title("BTC Prices (USD) \nLast Price: "+str(data["price"][1999]))
+                        sells = data[(data['type'] == 'ask')]
+                        #sells["datestamp"] = np.array(sells["timestamp"]).astype("datetime64[s]")
+                        sellDates = (sells["datestamp"]).tolist()
 
+                        volume = data["amount"]
+
+                        a.clear()
+
+                        a.plot_date(buyDates, buys["price"], lightColour, label = "buys")
+                        a.plot_date(sellDates, sells["price"], darkColour, label = "sells")
+
+                        a2.fill_between(allDates, 0,volume, facecolor = darkColour)
+
+                        #Makes it easier to see dates on the graph
+                        a.xaxis.set_major_locator(mticker.MaxNLocator(5))
+                        a.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M:%S"))
+
+                        plt.setp(a.get_xticklabels(), visible = False)
+                        #Creates legend
+                        a.legend(bbox_to_anchor = (0, 1.02, 1, .102), loc = 3, ncol =2, borderaxespad = 0)
+                        a.set_title("BTC Prices (USD) \nLast Price: "+str(data["price"][1999]))
+                    if exchange == "Bitstamp":
+                        a = plt.subplot2grid((6, 4), (0, 0), rowspan=5, colspan=4)
+                        a2 = plt.subplot2grid((6, 4), (5, 0), rowspan=1, colspan=4, sharex=a)
+
+                        dataLink = 'https://www.bitstamp.net/api/transactions/'
+                        data = urllib.request.urlopen(dataLink)
+                        data = data.read().decode("utf-8")
+                        data = json.loads(data)
+
+                        # Makes data a panda dataset
+                        data = pd.DataFrame(data)
+
+                        data["datestamp"] = np.array(data["date"].apply(int)).astype("datetime64[s]")
+                        dateStamps = data["datestamp"].tolist()
+                        #allDates = data["datestamp"].tolist()
+
+                        # buys = data[(data['type'] == 'bid')]
+                        # # buys["datestamp"] = np.array(buys["timestamp"]).astype("datetime64[s]")
+                        # buyDates = (buys["datestamp"]).tolist()
+                        #
+                        # sells = data[(data['type'] == 'ask')]
+                        # # sells["datestamp"] = np.array(sells["timestamp"]).astype("datetime64[s]")
+                        # sellDates = (sells["datestamp"]).tolist()
+
+                        volume = data["amount"].apply(float).tolist()
+
+                        a.clear()
+
+                        a.plot_date(dateStamps, data["price"], lightColour, label="buys")
+
+                        a2.fill_between(dateStamps, 0, volume, facecolor=darkColour)
+
+                        # Makes it easier to see dates on the graph
+                        a.xaxis.set_major_locator(mticker.MaxNLocator(5))
+                        a.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M:%S"))
+                        plt.setp(a.get_xticklabels(), visible = False)
+                        # Creates legend
+                        a.legend(bbox_to_anchor=(0, 1.02, 1, .102), loc=3, ncol=2, borderaxespad=0)
+                        a.set_title("Bitstamp BTC Prices (USD) \nLast Price: " + str(data["price"][0]))
+
+                    if exchange == "Bitfinex":
+                        a = plt.subplot2grid((6,4), (0,0), rowspan = 5, colspan = 4)
+                        a2 = plt.subplot2grid((6,4), (5,0), rowspan = 1, colspan = 4, sharex = a)
+
+                        dataLink = 'https://api.bitfinex.com/v1/trades/btcusd?limit=2000'
+                        data = urllib.request.urlopen(dataLink)
+                        data = data.read().decode("utf-8")
+                        data = json.loads(data)
+
+                        #Makes data a panda dataset
+                        data = pd.DataFrame(data)
+
+                        data["datestamp"] = np.array(data["timestamp"]).astype("datetime64[s]")
+                        allDates = data["datestamp"].tolist()
+
+                        buys = data[(data['type'] == 'buy')]
+                        #buys["datestamp"] = np.array(buys["timestamp"]).astype("datetime64[s]")
+                        buyDates = (buys["datestamp"]).tolist()
+
+                        sells = data[(data['type'] == 'sell')]
+                        #sells["datestamp"] = np.array(sells["timestamp"]).astype("datetime64[s]")
+                        sellDates = (sells["datestamp"]).tolist()
+
+                        volume = data["amount"].apply(float).tolist()
+
+                        a.clear()
+
+                        a.plot_date(buyDates, buys["price"], lightColour, label = "buys")
+                        a.plot_date(sellDates, sells["price"], darkColour, label = "sells")
+
+                        a2.fill_between(allDates, 0,volume, facecolor = darkColour)
+
+                        #Makes it easier to see dates on the graph
+                        a.xaxis.set_major_locator(mticker.MaxNLocator(5))
+                        a.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M:%S"))
+                        plt.setp(a.get_xticklabels(), visible=False)
+
+                        #Creates legend
+                        a.legend(bbox_to_anchor = (0, 1.02, 1, .102), loc = 3, ncol =2, borderaxespad = 0)
+                        a.set_title("Bitfinex BTC Prices (USD) \nLast Price: "+str(data["price"][0]))
+
+                    if exchange == "Huobi":
+                        a = plt.subplot2grid((6, 4), (0, 0), rowspan=6, colspan=4)
+
+                        data = urllib.request.urlopen("http://seaofbtc.com/api/basic/price?key=1&tf=1d&exchange="+programName).read()
+                        data = data.decode()
+
+                        data = json.loads(data)
+
+                        dateStamp = np.array(data[0]).astype("datetime64[s]")
+                        dateStamp = dateStamp.tolist()
+
+                        df = pd.DataFrame({'Datetime':dateStamp})
+
+                        df['Price'] = data[1]
+                        df['Volume'] = data[2]
+                        df['Symbol'] = "BTCUSD"
+                        df['MPLDate'] = df['Datetime'].apply(lambda date: mdates.date2num(date.to_pydatetime()))
+
+                        df = df.set_index("Datetime")
+
+                        lastPrice = df["Price"][-1]
+
+                        a.plot_date(df["MPLDate"][-4500:], df['Price'][-4500:], lightColour, label = "price")
+
+                        a.xaxis.set_major_locator(mticker.MaxNLocator(5))
+                        a.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d %H:%M:%S"))
+
+
+                        a.set_title("Huobi BTCUSD PRICES BTC Prices (USD) \nLast Price: " + str(lastPrice))
+
+
+                except Exception as e:
+                    print("Failed because of:", e)
 
 #Main class
 class BitcoinTracker(tk.Tk):
@@ -356,8 +539,6 @@ class BitcoinTracker(tk.Tk):
     def __init__(self, *args, **kwargs):
 
         tk.Tk.__init__(self, *args, **kwargs)
-
-        #tk.Tk.iconbitmap(self, default = "icon.ico")
         tk.Tk.wm_title(self, "bitcoin tracker")
         window = tk.Frame(self)
         window.pack(side = "right", fill = "both", expand = True)
@@ -461,6 +642,8 @@ class BitcoinTracker(tk.Tk):
             frame.grid(row = 0, column = 0, sticky = "nsew")
 
         self.show_frame(StartPage)
+        # tk.Tk.iconbitmap(self, default = "icon.ico")
+
 
     def show_frame(self, cont):
         frame = self.frames[cont]
