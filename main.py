@@ -3,17 +3,21 @@
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-#from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from matplotlib import style
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as mticker
 
+#Plotting using candlestick graphs
+from matplotlib.finance import candlestick_ohlc
+
 import urllib
 import json
 import pandas as pd
 import numpy as np
+
+#Removes a warning
 pd.options.mode.chained_assignment = None
 
 #Import Tkinter
@@ -28,7 +32,6 @@ SMALL_FONT = ("Verdana", 12)
 #Styling the Graph
 style.use("ggplot")
 f = plt.figure()
-#a = f.add_subplot(111)
 
 #Default values
 exchange = "BTC-e"
@@ -73,7 +76,6 @@ def tutorial():
             B1.pack()
             tut3.mainloop()
 
-
         tut2 = tk.Tk()
         tut2.wm_title("part 2")
         label = ttk.Label(tut2, text = "Part 2", font = NORM_FONT)
@@ -106,7 +108,7 @@ def loadChart(action):
 
 def addMiddleIndicator(what):
     global middleIndicators
-    global DatCounter
+    global counter
     if dataPace == "tick":
         popupmsg("Indicators in Tick Data not available, choose 1 minute tf if you want short term.")
 
@@ -132,7 +134,7 @@ def addMiddleIndicator(what):
                     group.append("sma")
                     group.append(int(periods))
                     middleIndicators.append(group)
-                    DatCounter = 9000
+                    counter = 9000
                     print("mid indicator", middleIndicators)
                     midIQ.destroy()
 
@@ -159,7 +161,7 @@ def addMiddleIndicator(what):
                     group.append("ema")
                     group.append(int(periods))
                     middleIndicators.append(group)
-                    DatCounter = 9000
+                    counter = 9000
                     print("mid indicator", middleIndicators)
                     midIQ.destroy()
 
@@ -187,7 +189,7 @@ def addMiddleIndicator(what):
                     group.append("sma")
                     group.append(int(periods))
                     middleIndicators.append(group)
-                    DatCounter = 9000
+                    counter = 9000
                     print("mid indicator", middleIndicators)
                     midIQ.destroy()
 
@@ -213,7 +215,7 @@ def addMiddleIndicator(what):
                     group.append("ema")
                     group.append(int(periods))
                     middleIndicators.append(group)
-                    DatCounter = 9000
+                    counter = 9000
                     print("mid indicator", middleIndicators)
                     midIQ.destroy()
 
@@ -265,10 +267,8 @@ def addTopIndicator(what):
         tk.mainloop()
 
     elif what == "macd":
-
         topIndicator = "macd"
         counter = 9000
-
 
 def addBottomIndicator(what):
     global bottomIndicator
@@ -315,7 +315,6 @@ def addBottomIndicator(what):
         bottomIndicator = "macd"
         counter = 9000
 
-
 def changeTimeFrame(tf):
     global dataPace
     global counter
@@ -351,7 +350,6 @@ def changeExchange(toWhat, pn):
     exchange = toWhat
     programName = pn
     counter = 9000
-
 
 #Creates a pop up message with given text
 def popupmsg(msg):
@@ -418,6 +416,8 @@ def animate(i):
                         #Creates legend
                         a.legend(bbox_to_anchor = (0, 1.02, 1, .102), loc = 3, ncol =2, borderaxespad = 0)
                         a.set_title("BTC Prices (USD) \nLast Price: "+str(data["price"][1999]))
+                        priceData = data['price'].apply(float).tolist()
+
                     if exchange == "Bitstamp":
                         a = plt.subplot2grid((6, 4), (0, 0), rowspan=5, colspan=4)
                         a2 = plt.subplot2grid((6, 4), (5, 0), rowspan=1, colspan=4, sharex=a)
@@ -457,6 +457,7 @@ def animate(i):
                         # Creates legend
                         a.legend(bbox_to_anchor=(0, 1.02, 1, .102), loc=3, ncol=2, borderaxespad=0)
                         a.set_title("Bitstamp BTC Prices (USD) \nLast Price: " + str(data["price"][0]))
+                        priceData = data['price'].apply(float).tolist()
 
                     if exchange == "Bitfinex":
                         a = plt.subplot2grid((6,4), (0,0), rowspan = 5, colspan = 4)
@@ -498,6 +499,7 @@ def animate(i):
                         #Creates legend
                         a.legend(bbox_to_anchor = (0, 1.02, 1, .102), loc = 3, ncol =2, borderaxespad = 0)
                         a.set_title("Bitfinex BTC Prices (USD) \nLast Price: "+str(data["price"][0]))
+                        priceData = data['price'].apply(float).tolist()
 
                     if exchange == "Huobi":
                         a = plt.subplot2grid((6, 4), (0, 0), rowspan=6, colspan=4)
@@ -528,10 +530,162 @@ def animate(i):
 
 
                         a.set_title("Huobi BTCUSD PRICES BTC Prices (USD) \nLast Price: " + str(lastPrice))
+                        priceData = df['price'].apply(float).tolist()
 
 
                 except Exception as e:
                     print("Failed because of:", e)
+
+            else:
+                if counter > 12:
+                    try:
+                        if exchange == 'Huobi':
+                            if topIndicator != "none":
+
+                                a = plt.subplot2grid((6, 4), (1, 0), rowspan=5, colspan=4)
+                                a0 = plt.subplot2grid((6, 4), (0, 0), sharex=a, rowspan=1, colspan=4)
+                            else:
+                                a = plt.subplot2grid((6, 4), (0, 0), rowspan=6, colspan=4)
+
+                        else:
+                            if topIndicator != "none" and bottomIndicator != "none":
+                                # actual price chart.
+                                a = plt.subplot2grid((6, 4), (1, 0), rowspan=3, colspan=4)
+                                # volume!
+                                a2 = plt.subplot2grid((6, 4), (4, 0), sharex=a, rowspan=1, colspan=4)
+                                # top indicator
+                                a0 = plt.subplot2grid((6, 4), (0, 0), sharex=a, rowspan=1, colspan=4)
+                                # bottom indicator
+                                a3 = plt.subplot2grid((6, 4), (5, 0), sharex=a, rowspan=1, colspan=4)
+
+                            elif topIndicator != "none":
+                                a = plt.subplot2grid((6, 4), (1, 0), rowspan=4, colspan=4)
+                                a2 = plt.subplot2grid((6, 4), (5, 0), sharex=a, rowspan=1, colspan=4)
+                                a0 = plt.subplot2grid((6, 4), (0, 0), sharex=a, rowspan=1, colspan=4)
+                            elif bottomIndicator != "none":
+                                a = plt.subplot2grid((6, 4), (0, 0), rowspan=4, colspan=4)
+                                a2 = plt.subplot2grid((6, 4), (4, 0), sharex=a, rowspan=1, colspan=4)
+                                # a0 = plt.subplot2grid((6,4), (0,0), sharex=a, rowspan=1, colspan=4)
+                                a3 = plt.subplot2grid((6, 4), (5, 0), sharex=a, rowspan=1, colspan=4)
+
+                            else:
+                                a = plt.subplot2grid((6, 4), (0, 0), rowspan=5, colspan=4)
+                                a2 = plt.subplot2grid((6, 4), (5, 0), sharex=a, rowspan=1, colspan=4)
+
+                        print(
+                            'http://seaofbtc.com/api/basic/price?key=1&tf=' + dataPace + '&exchange=' + programName)
+                        data = urllib.request.urlopen(
+                            'http://seaofbtc.com/api/basic/price?key=1&tf=' + dataPace + '&exchange=' + programName).read()
+
+                        data = str(data).replace('b', '').replace("'", '')
+                        data = json.loads(data)
+
+                        dateStamp = np.array(data[0]).astype('datetime64[s]')
+                        dateStamp = dateStamp.tolist()
+
+                        df = pd.DataFrame({'Datetime': dateStamp})
+                        df['Price'] = data[1]
+                        df['Volume'] = data[2]
+                        df['Symbol'] = "BTCUSD"
+                        df['MPLDate'] = df['Datetime'].apply(lambda date: mdates.date2num(date.to_pydatetime()))
+                        df = df.set_index('Datetime')
+
+                        OHLC = df['Price'].resample(resampleSize).ohlc()
+                        OHLC = OHLC.dropna()
+
+                        volumeData = df['Volume'].resample(resampleSize).sum()
+
+                        OHLC['dateCopy'] = OHLC.index
+                        OHLC['MPLDates'] = OHLC['dateCopy'].apply(lambda date: mdates.date2num(date.to_pydatetime()))
+                        del OHLC['dateCopy']
+
+                        # volumeData['dateCopy'] = volumeData.index
+                        # volumeData['MPLDates'] = volumeData['dateCopy'].apply(lambda date: mdates.date2num(date.to_pydatetime()))
+                        # del volumeData['dateCopy']
+
+                        priceData = OHLC['close'].apply(float).tolist()
+
+                        a.clear()
+                        if middleIndicators != "none":
+                            for eachMA in middleIndicators:
+                                ewma = pd.stats.moments.ewma
+                                # print("type:",eachMA[0],"periods:",eachMA[1])
+                                if eachMA[0] == "sma":
+                                    sma = pd.rolling_mean(OHLC["close"], eachMA[1])
+                                    label = str(eachMA[1]) + " SMA"
+                                    a.plot(OHLC['MPLDates'], sma, label=label)
+                                if eachMA[0] == "ema":
+                                    ewma = pd.stats.moments.ewma
+                                    label = str(eachMA[1]) + " EMA"
+                                    a.plot(OHLC['MPLDates'], ewma(OHLC["close"], eachMA[1]), label=label)
+
+                            # a.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                            #   ncol=2, borderaxespad=0.)
+
+                            a.legend(loc=0)
+
+                        if topIndicator[0] == "rsi":
+                            rsiIndicator(priceData, "top")
+                        elif topIndicator == "macd":
+                            try:
+                                computeMACD(priceData, location="top")
+                            except:
+                                print("failed macd")
+
+                        if bottomIndicator[0] == "rsi":
+                            rsiIndicator(priceData, "bottom")
+                        elif bottomIndicator == "macd":
+                            try:
+                                computeMACD(priceData, location="bottom")
+                            except:
+                                print("failed macd")
+
+                        csticks = candlestick_ohlc(a, OHLC[['MPLDates', 'open', 'high', 'low', 'close']].values,
+                                                   width=candleWidth, colorup=lightColour, colordown=darkColour)
+                        a.set_ylabel("price")
+                        if exchange != 'Huobi':
+                            a2.fill_between(volumeData['MPLDates'], 0, volumeData['volume'],
+                                            facecolor='#183A54')  # , alpha=.4)
+                            a2.set_ylabel("volume")
+
+                        a.xaxis.set_major_locator(mticker.MaxNLocator(3))
+                        a.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+
+                        plt.setp(a.get_xticklabels(), visible=False)
+
+                        if topIndicator != "none":
+                            plt.setp(a0.get_xticklabels(), visible=False)
+
+                        if bottomIndicator != "none":
+                            plt.setp(a2.get_xticklabels(), visible=False)
+
+                        x = (len(OHLC['close'])) - 1
+
+                        if dataPace == '1d':
+                            title = exchange + ' 1 Day Data with ' + resampleSize + ' Bars\nLast Price: ' + str(
+                                OHLC['close'][x])
+                        if dataPace == '3d':
+                            title = exchange + ' 3 Day Data with ' + resampleSize + ' Bars\nLast Price: ' + str(
+                                OHLC['close'][x])
+                        if dataPace == '7d':
+                            title = exchange + ' 7 Day Data with ' + resampleSize + ' Bars\nLast Price: ' + str(
+                                OHLC['close'][x])
+
+                        if topIndicator != "none":
+                            a0.set_title(title)
+                        else:
+                            a.set_title(title)
+                        print('NewGraph!')
+
+                        counter = 0
+
+
+                    except Exception as e:
+                        counter = 9000
+
+                else:
+                    counter += 1
+
 
 #Main class
 class BitcoinTracker(tk.Tk):
@@ -539,7 +693,7 @@ class BitcoinTracker(tk.Tk):
     def __init__(self, *args, **kwargs):
 
         tk.Tk.__init__(self, *args, **kwargs)
-        tk.Tk.wm_title(self, "bitcoin tracker")
+        tk.Tk.wm_title(self, "Bitcoin Price Tracker")
         window = tk.Frame(self)
         window.pack(side = "right", fill = "both", expand = True)
         window.grid_rowconfigure(0, weight = 1)
@@ -616,7 +770,7 @@ class BitcoinTracker(tk.Tk):
         tradeButton.add_separator()
         tradeButton.add_command(label="Set-up Quick Buy and Sell", command=lambda: popupmsg('This is not live yet'))
 
-        menubar.add_cascade(label = "trading", menu = tradeButton)
+        menubar.add_cascade(label = "Trading", menu = tradeButton)
 
         startStop = tk.Menu(menubar, tearoff = 1)
         startStop.add_command(label = "resume", command = lambda: loadChart('start'))
@@ -655,9 +809,9 @@ class StartPage(tk.Frame):
     def __init__(self, parent, controller):
 
         tk.Frame.__init__(self, parent)
-        label = ttk.Label(self, text = """Bitcoin Price Tracker is not responsible for any loss that
-         is caused because of our application.""", font = LARGE_FONT)
-        label.pack(pady = 10, padx = 10)
+        label = ttk.Label(self, text = """Bitcoin Price Tracker is not responsible for any loss that is caused because the use of our application.
+                   We kindly ask you to use our service as an educational tool only.""", font = "Verdana 20")
+        label.pack(pady = 60, padx = 30)
 
         #Takes you to the graph page
         button1 = ttk.Button(self, text = "Agree", command = lambda: controller.show_frame(Graph_Page))
@@ -667,32 +821,11 @@ class StartPage(tk.Frame):
         button2 = ttk.Button(self, text = "Disagree", command = quit)
         button2.pack()
 
-"""
-class HomePage(tk.Frame):
-    def __init__(self, parent, controller):
-
-        tk.Frame.__init__(self, parent)
-        label = ttk.Label(self, text = "Page One", font = LARGE_FONT)
-        label.pack(pady = 10, padx = 10)
-
-        button1 = ttk.Button(self, text = "back to home", command = lambda: controller.show_frame(StartPage))
-        button1.pack()
-
-        button1 = ttk.Button(self, text="Page 2", command=lambda: controller.show_frame(PageTwo))
-        button1.pack()
-
-    tk.Frame
-"""
-
 class Graph_Page(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-        label = ttk.Label(self, text="Graph Page", font=LARGE_FONT)
-        label.pack(pady=10, padx=10)
-
-        button1 = ttk.Button(self, text="back to home", command=lambda: controller.show_frame(StartPage))
-        button1.pack()
-
+        label = ttk.Label(self, text="BITCOIN PRICE TRACKER", font="Verdana 15 bold")
+        label.pack(pady=10, padx=5)
 
         canvas = FigureCanvasTkAgg(f, self)
         canvas.show()
@@ -706,5 +839,5 @@ class Graph_Page(tk.Frame):
 app = BitcoinTracker()
 #Set Screen size
 app.geometry("1280x720")
-ani = animation.FuncAnimation(f,animate, interval = 5000)
+ani = animation.FuncAnimation(f,animate, interval = 2000)
 app.mainloop()
